@@ -70,16 +70,20 @@
   <div class="pdf-row">
     {% if job.resume_pdf %}<a href="{{ url_for('download_pdf', job_id=job.id, kind='resume') }}" target="_blank" class="btn">View resume PDF</a>{% endif %}
     {% if job.cover_letter_pdf %}<a href="{{ url_for('download_pdf', job_id=job.id, kind='cover_letter') }}" target="_blank" class="btn">View cover letter PDF</a>{% endif %}
-    <form method="post" action="{{ url_for('refresh_drafts', job_id=job.id) }}" class="inline">
-      <button type="submit" class="btn">Regenerate drafts</button>
+    <form method="post" action="{{ url_for('refresh_drafts', job_id=job.id) }}" class="inline"
+          data-overlay="Regenerating drafts"
+          data-overlay-steps="Asking Claude for a fresh cover letter…|Building PDFs…">
+      <button type="submit" class="btn" data-loading-text="Regenerating…">Regenerate drafts</button>
     </form>
   </div>
 </section>
 {% else %}
 <section class="panel">
   <p class="empty">No drafts yet for this job.
-    <form method="post" action="{{ url_for('refresh_drafts', job_id=job.id) }}" class="inline">
-      <button type="submit" class="btn btn-primary">Generate drafts</button>
+    <form method="post" action="{{ url_for('refresh_drafts', job_id=job.id) }}" class="inline"
+          data-overlay="Generating drafts"
+          data-overlay-steps="Asking Claude for a tailored cover letter…|Building PDFs…">
+      <button type="submit" class="btn btn-primary" data-loading-text="Generating…">Generate drafts</button>
     </form>
   </p>
 </section>
@@ -108,11 +112,13 @@
     <h3>Send application</h3>
     <p class="muted small">Will send the email above with the resume + cover letter PDFs attached, via your authorized Gmail account. Double-check the recipient.</p>
     <form method="post" action="{{ url_for('send', job_id=job.id) }}" class="send-form"
+          data-overlay="Sending email"
           onsubmit="return confirm('Send the application now?');">
       <label>Recipient email
         <input type="email" name="to" required placeholder="careers@company.com" />
       </label>
       <button type="submit" class="btn btn-primary"
+              data-loading-text="Sending…"
               {% if job.status not in ['approved', 'drafted'] %}disabled{% endif %}>
         Send application
       </button>

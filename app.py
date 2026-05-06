@@ -209,4 +209,6 @@ def download_pdf(job_id: int, kind: str):
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    # threaded=True so a long-running /fetch doesn't block other requests
+    # (e.g. you refreshing the page while a fetch is still going).
+    app.run(debug=True, port=5000, threaded=True)
