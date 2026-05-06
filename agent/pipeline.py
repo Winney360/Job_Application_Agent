@@ -20,10 +20,7 @@ from agent.profile_loader import Profile, load_profile
 from agent.remote_filter import filter_and_dedupe
 from agent.scorer import JobScore, score_jobs
 
-DEFAULT_QUERY = (
-    "from:linkedin.com (subject:jobs OR subject:opportunities OR subject:alert) "
-    "newer_than:7d"
-)
+DEFAULT_QUERY = "from:jobalerts-noreply@linkedin.com newer_than:30d"
 
 
 @dataclass
@@ -173,7 +170,10 @@ def main() -> None:
                 print(f"          {kind}: {path}")
 
     if args.save:
-        args.save.write_text(json.dumps([_scored_to_dict(s) for s in results], indent=2))
+        args.save.write_text(
+            json.dumps([_scored_to_dict(s) for s in results], indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
         print(f"\nSaved report to {args.save}")
 
 

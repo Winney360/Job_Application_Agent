@@ -121,7 +121,10 @@ def parse_resumes(
 
 def save_profile(profile: Profile, path: Path = PROFILE_PATH) -> None:
     data = profile.model_dump(exclude_none=True)
-    path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True))
+    path.write_text(
+        yaml.safe_dump(data, sort_keys=False, allow_unicode=True),
+        encoding="utf-8",
+    )
 
 
 def load_profile(path: Path = PROFILE_PATH) -> Profile:
@@ -129,7 +132,7 @@ def load_profile(path: Path = PROFILE_PATH) -> Profile:
         raise FileNotFoundError(
             f"{path.name} not found. Run `python -m agent.profile_loader` to generate it."
         )
-    return Profile.model_validate(yaml.safe_load(path.read_text()))
+    return Profile.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")))
 
 
 if __name__ == "__main__":
