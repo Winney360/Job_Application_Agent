@@ -1,0 +1,42 @@
+# Secrets / credentials
+credentials.json
+token.json
+.env
+.env.local
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Generated output (PDFs, etc.) — keep folder, ignore contents
+output/*
+!output/.gitkeep
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Profile data parsed from resumes (may contain PII)
+profile.yaml

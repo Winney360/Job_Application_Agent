@@ -1,0 +1,22 @@
+# Core
+anthropic>=0.40.0
+python-dotenv>=1.0.1
+pyyaml>=6.0.2
+
+# Gmail API
+google-api-python-client>=2.150.0
+google-auth-httplib2>=0.2.0
+google-auth-oauthlib>=1.2.1
+
+# Resume parsing
+pypdf>=5.0.0
+
+# PDF generation
+reportlab>=4.2.5
+
+# Web UI
+Flask>=3.0.3
+
+# Email parsing helpers
+beautifulsoup4>=4.12.3
+lxml>=5.3.0
