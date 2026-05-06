@@ -121,6 +121,9 @@ def run_pipeline(
 
     # Persist all scored jobs (even below threshold) so the UI can show full picture.
     db_ids: dict[int, int] = {}  # index in deduped -> job_id
+    # Map email id -> sender for fallback recipient pre-fill
+    email_senders = {email.id: email.sender for email, _ in pairs}
+
     if persist:
         with connect() as conn:
             for i, sj in enumerate(deduped):
@@ -130,6 +133,7 @@ def run_pipeline(
                     score=sj.score.model_dump(),
                     source_email_id=sj.source_email_id,
                     source_email_subject=sj.source_email_subject,
+                    source_email_sender=email_senders.get(sj.source_email_id, ""),
                 )
 
     # Generate materials for the top N

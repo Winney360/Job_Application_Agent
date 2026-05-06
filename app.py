@@ -88,13 +88,40 @@ def index() -> str:
     )
 
 
+_EMAIL_RE = __import__("re").compile(r"<([^<>@\s]+@[^<>@\s]+)>")
+
+
+def _suggest_recipient(job) -> tuple[str, str]:
+    """Return (email, source_label) suggesting where to send the application.
+
+    Priority: explicit apply email from the listing > sender of the source email.
+    `source_label` is a short tag describing where it came from, for UI hints.
+    """
+    if job.recipient_email:
+        return job.recipient_email, "extracted from job listing"
+    sender = job.source_email_sender or ""
+    # "Foo Bar <foo@bar.com>" -> "foo@bar.com"
+    m = _EMAIL_RE.search(sender)
+    if m:
+        return m.group(1), "sender of the source email"
+    if "@" in sender:
+        return sender.strip(), "sender of the source email"
+    return "", ""
+
+
 @app.route("/jobs/<int:job_id>")
 def job_detail(job_id: int) -> str:
     with connect() as conn:
         job = get_job(conn, job_id)
     if job is None:
         abort(404)
-    return render_template("job.html", job=job)
+    suggested, source = _suggest_recipient(job)
+    return render_template(
+        "job.html",
+        job=job,
+        suggested_recipient=suggested,
+        suggested_source=source,
+    )
 
 
 @app.post("/jobs/<int:job_id>/approve")
@@ -177,9 +204,40 @@ def send(job_id: int) -> "Response":
     return redirect(url_for("job_detail", job_id=job_id))
 
 
+VALID_WINDOWS = {"1d", "2d", "7d", "14d", "30d"}
+
+
+def _build_query(form) -> str | None:
+    """Construct a Gmail query from the structured form fields.
+
+    The 'query' field (Advanced override), if filled, beats everything else.
+    Otherwise:
+      - from_preset == 'all'    -> no from filter (whole inbox)
+      - from_preset == 'custom' -> use the from_custom text input
+      - any other value         -> use that as the from: filter
+      - if from_custom is filled it always wins (treats it as an override).
+    """
+    raw = (form.get("query") or "").strip()
+    if raw:
+        return raw
+
+    preset = (form.get("from_preset") or "").strip()
+    custom = (form.get("from_custom") or "").strip()
+    when = (form.get("when") or "").strip()
+
+    parts: list[str] = []
+    if custom:
+        parts.append(f"from:{custom}")
+    elif preset and preset not in {"all", "custom"}:
+        parts.append(f"from:{preset}")
+    if when in VALID_WINDOWS:
+        parts.append(f"newer_than:{when}")
+    return " ".join(parts) or None
+
+
 @app.post("/fetch")
 def fetch() -> "Response":
-    query = request.form.get("query") or None
+    query = _build_query(request.form)
     max_emails = int(request.form.get("max_emails") or 5)
     threshold = int(request.form.get("threshold") or 50)
     top_n = int(request.form.get("top_n") or 3)
@@ -187,7 +245,7 @@ def fetch() -> "Response":
     if query:
         kwargs["query"] = query
     results = run_pipeline(verbose=True, **kwargs)
-    flash(f"Fetched {len(results)} scored job(s).", "ok")
+    flash(f"Fetched {len(results)} scored job(s) using query: {query or 'default'}", "ok")
     return redirect(url_for("index"))
 
 

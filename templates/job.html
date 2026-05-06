@@ -113,9 +113,15 @@
     <p class="muted small">Will send the email above with the resume + cover letter PDFs attached, via your authorized Gmail account. Double-check the recipient.</p>
     <form method="post" action="{{ url_for('send', job_id=job.id) }}" class="send-form"
           data-overlay="Sending email"
-          onsubmit="return confirm('Send the application now?');">
+          onsubmit="return confirm('Send the application now to ' + this.to.value + '?');">
       <label>Recipient email
-        <input type="email" name="to" required placeholder="careers@company.com" />
+        <input type="email" name="to" required placeholder="careers@company.com"
+               value="{{ suggested_recipient }}" />
+        {% if suggested_recipient %}
+          <span class="hint muted small">Auto-filled — {{ suggested_source }}. Edit if wrong.</span>
+        {% else %}
+          <span class="hint muted small">No recipient detected. Enter the address manually.</span>
+        {% endif %}
       </label>
       <button type="submit" class="btn btn-primary"
               data-loading-text="Sending…"

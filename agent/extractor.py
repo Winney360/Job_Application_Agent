@@ -51,6 +51,14 @@ class Job(BaseModel):
         default="",
         description="Posting date or relative phrase like '3 days ago' if visible.",
     )
+    apply_email: str = Field(
+        default="",
+        description=(
+            "Email address for applying, ONLY if the listing explicitly says something "
+            "like 'apply to recruiter@company.com', 'send your CV to ...', or shows a "
+            "contact email. Leave empty if the listing only points to a URL."
+        ),
+    )
 
 
 class ExtractionResult(BaseModel):
@@ -74,6 +82,7 @@ Rules for extraction:
 - Set remote=true ONLY if the listing explicitly mentions remote / work from home / fully remote / WFH. "Hybrid", "flexible", or unclear locations are NOT remote.
 - Skills must be concrete tech (React, Node.js, AWS, Python, GraphQL, etc.). Skip soft skills.
 - For job_url, prefer the canonical job-detail URL. If only a tracking redirect is present, use that.
+- For apply_email, extract ONLY if a contact email is explicitly written in the listing. Never invent or guess from the company domain.
 - Do not invent fields. If a value is missing, use an empty string."""
 
 

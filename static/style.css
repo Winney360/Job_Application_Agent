@@ -74,18 +74,25 @@ h3 { font-size: 13px; margin: 14px 0 6px 0; text-transform: uppercase; letter-sp
 
 .fetch-form {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
   gap: 12px; align-items: end;
 }
 .fetch-form label {
   display: flex; flex-direction: column; gap: 4px;
   font-size: 12px; color: var(--muted); font-weight: 500;
 }
-input[type=text], input[type=email], input[type=number] {
+.fetch-form .span-2 { grid-column: span 2; }
+.advanced { grid-column: 1 / -1; margin-top: 4px; }
+.advanced summary { cursor: pointer; color: var(--muted); font-size: 12px; user-select: none; }
+.advanced summary:hover { color: var(--text); }
+.advanced label { margin-top: 8px; }
+
+input[type=text], input[type=email], input[type=number], select {
   padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px;
   font-size: 14px; font-family: inherit; background: #fff;
 }
-input:focus { outline: 2px solid var(--primary); outline-offset: -1px; border-color: var(--primary); }
+select { padding-right: 28px; }
+input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: -1px; border-color: var(--primary); }
 
 .btn {
   display: inline-block;
@@ -185,6 +192,7 @@ dd { margin: 2px 0 0 0; }
 .action-row { display: flex; gap: 10px; }
 .send-form { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
 .send-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); flex-grow: 1; min-width: 240px; }
+.hint { margin-top: 2px; }
 
 code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 12px; background: #f0f1f3; padding: 1px 6px; border-radius: 3px; }
 

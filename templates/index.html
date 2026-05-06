@@ -9,8 +9,29 @@
   <form method="post" action="{{ url_for('fetch') }}" class="fetch-form"
         data-overlay="Fetching from Gmail"
         data-overlay-steps="Reading inbox…|Extracting jobs from each email…|Scoring matches against your profile…|Drafting cover letters and PDFs…|Wrapping up — almost there…">
-    <label>Gmail query
-      <input type="text" name="query" placeholder="from:jobalerts-noreply@linkedin.com newer_than:30d" />
+    <label>From
+      <select name="from_preset">
+        <option value="all">All senders (whole inbox)</option>
+        <option value="jobalerts-noreply@linkedin.com" selected>LinkedIn Job Alerts</option>
+        <option value="linkedin.com">Any LinkedIn email</option>
+        <option value="indeed.com">Indeed</option>
+        <option value="wellfound.com">Wellfound</option>
+        <option value="glassdoor.com">Glassdoor</option>
+        <option value="custom">Custom address (use field below)</option>
+      </select>
+    </label>
+    <label>Custom email
+      <input type="text" name="from_custom"
+             placeholder="friend@gmail.com" />
+    </label>
+    <label>When
+      <select name="when">
+        <option value="1d">Last 24 hours</option>
+        <option value="2d">Last 2 days</option>
+        <option value="7d" selected>Last 7 days</option>
+        <option value="14d">Last 14 days</option>
+        <option value="30d">Last 30 days</option>
+      </select>
     </label>
     <label>Max emails
       <input type="number" name="max_emails" value="5" min="1" max="50" />
@@ -23,6 +44,13 @@
     </label>
     <button type="submit" class="btn btn-primary"
             data-loading-text="Fetching… (30–90s)">Fetch &amp; score</button>
+
+    <details class="advanced">
+      <summary>Advanced — raw Gmail query</summary>
+      <label>Override (overrides From + When if filled)
+        <input type="text" name="query" placeholder="e.g. subject:hiring newer_than:3d -from:linkedin.com" />
+      </label>
+    </details>
   </form>
   <p class="muted small">Drafts cover letters + PDFs only for the top N qualifying jobs. Nothing is emailed.</p>
 </section>

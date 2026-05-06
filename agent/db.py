@@ -49,6 +49,11 @@ CREATE TABLE IF NOT EXISTS jobs (
     -- Source email
     source_email_id TEXT NOT NULL DEFAULT '',
     source_email_subject TEXT NOT NULL DEFAULT '',
+    source_email_sender TEXT NOT NULL DEFAULT '',
+
+    -- Recipient suggestion: extracted "apply to ..." email from the listing body.
+    -- Pre-fills the Send form so the user doesn't retype it.
+    recipient_email TEXT NOT NULL DEFAULT '',
 
     -- Status: pending | drafted | approved | sent | rejected
     status TEXT NOT NULL DEFAULT 'pending',
@@ -84,9 +89,21 @@ def connect(db_path: Path = DB_PATH) -> Iterator[sqlite3.Connection]:
         conn.close()
 
 
+# Idempotent ALTER TABLE migrations for databases created before columns existed.
+_MIGRATIONS = [
+    "ALTER TABLE jobs ADD COLUMN source_email_sender TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE jobs ADD COLUMN recipient_email TEXT NOT NULL DEFAULT ''",
+]
+
+
 def init_db(db_path: Path = DB_PATH) -> None:
     with connect(db_path) as conn:
         conn.executescript(SCHEMA)
+        for stmt in _MIGRATIONS:
+            try:
+                conn.execute(stmt)
+            except sqlite3.OperationalError:
+                pass  # column already exists
 
 
 @dataclass
@@ -113,6 +130,8 @@ class JobRow:
     cover_letter_pdf: str | None
     source_email_id: str
     source_email_subject: str
+    source_email_sender: str
+    recipient_email: str
     status: str
     sent_at: str | None
     sent_to: str | None
@@ -145,6 +164,8 @@ class JobRow:
             cover_letter_pdf=row["cover_letter_pdf"],
             source_email_id=row["source_email_id"],
             source_email_subject=row["source_email_subject"],
+            source_email_sender=row["source_email_sender"] or "",
+            recipient_email=row["recipient_email"] or "",
             status=row["status"],
             sent_at=row["sent_at"],
             sent_to=row["sent_to"],
@@ -164,6 +185,7 @@ def upsert_scored_job(
     score: dict,
     source_email_id: str,
     source_email_subject: str,
+    source_email_sender: str = "",
 ) -> int:
     """Insert or update a scored job. Preserves user-set status (approved/sent/rejected).
     Returns the job id.
@@ -189,6 +211,8 @@ def upsert_scored_job(
         "score_reason": score.get("reason", ""),
         "source_email_id": source_email_id,
         "source_email_subject": source_email_subject,
+        "source_email_sender": source_email_sender,
+        "recipient_email": job.get("apply_email", ""),
         "updated_at": now,
     }
     if existing is None:
