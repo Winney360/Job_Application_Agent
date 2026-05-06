@@ -88,6 +88,10 @@ python -m agent.pipeline --max-emails 5 --threshold 50 --top-n 3
 ```
 Either entry point writes into the same `jobs.db`.
 
+## Repeat-fetch optimization
+
+The pipeline remembers every email it has already extracted (in a `processed_emails` table). On a repeat fetch it skips those emails entirely — no extraction call to Claude, no scoring. So clicking **Fetch & score** twice in a row only costs API credits if Gmail surfaces new messages since the last run.
+
 ## Strict rules (from the spec)
 
 - Never auto-apply without explicit user approval

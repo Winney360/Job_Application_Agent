@@ -12,10 +12,17 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from agent.db import attach_materials, connect, init_db, upsert_scored_job
+from agent.db import (
+    already_processed,
+    attach_materials,
+    connect,
+    init_db,
+    mark_processed,
+    upsert_scored_job,
+)
 from agent.extractor import EmailKind, ExtractionResult, Job, extract
 from agent.generator import ApplicationMaterials, generate_materials
-from agent.gmail_client import FetchedEmail, fetch_messages
+from agent.gmail_client import FetchedEmail, fetch_message, fetch_messages, search_messages
 from agent.pdf_builder import OUTPUT_DIR, build_application_pdfs
 from agent.profile_loader import Profile, load_profile
 from agent.remote_filter import filter_and_dedupe
@@ -49,11 +56,36 @@ def harvest_jobs(
     *,
     query: str = DEFAULT_QUERY,
     max_emails: int = 25,
+    verbose: bool = False,
 ) -> list[tuple[FetchedEmail, ExtractionResult]]:
-    """Fetch matching emails and extract jobs from each. Returns the per-email pairs."""
+    """Fetch matching emails and extract jobs from each.
+
+    Skips emails we've already classified (cache hit on the processed_emails
+    table) to avoid paying Claude for the same email twice.
+    """
+    init_db()  # ensure processed_emails table exists
+    ids = search_messages(query, max_results=max_emails)
+    with connect() as conn:
+        seen = already_processed(conn, ids)
+
+    fresh_ids = [mid for mid in ids if mid not in seen]
+    if verbose:
+        print(f"  {len(ids)} email(s) matched, {len(seen)} already processed, "
+              f"{len(fresh_ids)} new to classify")
+
     out: list[tuple[FetchedEmail, ExtractionResult]] = []
-    for email in fetch_messages(query, max_results=max_emails):
+    for mid in fresh_ids:
+        email = fetch_message(mid)
         result = extract(email)
+        with connect() as conn:
+            mark_processed(
+                conn,
+                email_id=email.id,
+                kind=result.kind.value,
+                sender=email.sender,
+                subject=email.subject,
+                job_count=len(result.jobs),
+            )
         if result.kind != EmailKind.JOB_ALERT:
             continue
         out.append((email, result))
@@ -78,9 +110,9 @@ def run_pipeline(
     if persist:
         init_db()
 
-    pairs = harvest_jobs(query=query, max_emails=max_emails)
+    pairs = harvest_jobs(query=query, max_emails=max_emails, verbose=verbose)
     if verbose:
-        print(f"Found {len(pairs)} job-alert email(s)")
+        print(f"Found {len(pairs)} job-alert email(s) to score")
 
     all_scored: list[ScoredJob] = []
     for email, result in pairs:

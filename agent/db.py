@@ -67,6 +67,18 @@ CREATE TABLE IF NOT EXISTS jobs (
 
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
 CREATE INDEX IF NOT EXISTS idx_jobs_score ON jobs(score DESC);
+
+-- Tracks every email we've called the extractor on so we never pay for the
+-- same Claude classification twice. Includes non-job emails (newsletters,
+-- marketing) so we don't re-classify those either.
+CREATE TABLE IF NOT EXISTS processed_emails (
+    email_id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    sender TEXT NOT NULL DEFAULT '',
+    subject TEXT NOT NULL DEFAULT '',
+    job_count INTEGER NOT NULL DEFAULT 0,
+    processed_at TEXT NOT NULL
+);
 """
 
 
@@ -320,3 +332,34 @@ def status_counts(conn: sqlite3.Connection) -> dict[str, int]:
         "SELECT status, COUNT(*) AS n FROM jobs GROUP BY status"
     ).fetchall()
     return {r["status"]: r["n"] for r in rows}
+
+
+def already_processed(conn: sqlite3.Connection, email_ids: list[str]) -> set[str]:
+    """Return the subset of email_ids we have already extracted."""
+    if not email_ids:
+        return set()
+    placeholders = ",".join("?" * len(email_ids))
+    rows = conn.execute(
+        f"SELECT email_id FROM processed_emails WHERE email_id IN ({placeholders})",
+        email_ids,
+    ).fetchall()
+    return {r["email_id"] for r in rows}
+
+
+def mark_processed(
+    conn: sqlite3.Connection,
+    *,
+    email_id: str,
+    kind: str,
+    sender: str,
+    subject: str,
+    job_count: int,
+) -> None:
+    conn.execute(
+        """
+        INSERT OR REPLACE INTO processed_emails
+            (email_id, kind, sender, subject, job_count, processed_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (email_id, kind, sender, subject, job_count, _now()),
+    )
