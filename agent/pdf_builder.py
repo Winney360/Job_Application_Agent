@@ -127,16 +127,53 @@ def _doc(path: Path) -> SimpleDocTemplate:
     )
 
 
+LINK_COLOR = "#1155cc"
+
+
+def _normalize_url(url: str) -> str:
+    """Ensure the URL has a protocol so PDF viewers treat it as clickable."""
+    url = url.strip()
+    if url.startswith("mailto:") or url.startswith("http://") or url.startswith("https://"):
+        return url
+    return "https://" + url.lstrip("/")
+
+
+def _link_label(url: str) -> str:
+    """Friendly display label for a URL."""
+    lower = url.lower()
+    if "linkedin.com" in lower:
+        return "LinkedIn"
+    if "github.com" in lower:
+        return "GitHub"
+    if "twitter.com" in lower or "x.com/" in lower:
+        return "Twitter"
+    if "dev.to" in lower:
+        return "dev.to"
+    # Anything else (personal domain, vercel/netlify deploy, etc.) -> Portfolio
+    return "Portfolio"
+
+
+def _link(url: str, label: str | None = None) -> str:
+    """Render a clickable link as ReportLab Paragraph markup."""
+    href = _normalize_url(url)
+    text = label or _link_label(url)
+    return (
+        f'<link href="{_esc(href)}" color="{LINK_COLOR}">'
+        f"<u>{_esc(text)}</u></link>"
+    )
+
+
 def _header(profile: Profile, styles: dict[str, ParagraphStyle]) -> list:
-    contact_bits = [profile.email]
+    bits: list[str] = [_link(f"mailto:{profile.email}", profile.email)]
     if profile.phone:
-        contact_bits.append(profile.phone)
+        bits.append(_esc(profile.phone))
     if profile.location:
-        contact_bits.append(profile.location)
-    contact_bits.extend(profile.links)
+        bits.append(_esc(profile.location))
+    for url in profile.links:
+        bits.append(_link(url))
     return [
         Paragraph(_esc(profile.full_name), styles["name"]),
-        Paragraph(_esc(" | ".join(contact_bits)), styles["contact"]),
+        Paragraph(" | ".join(bits), styles["contact"]),
     ]
 
 
