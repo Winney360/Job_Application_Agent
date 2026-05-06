@@ -12,6 +12,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from agent.db import attach_materials, connect, init_db, upsert_scored_job
 from agent.extractor import EmailKind, ExtractionResult, Job, extract
 from agent.generator import ApplicationMaterials, generate_materials
 from agent.gmail_client import FetchedEmail, fetch_messages
@@ -67,11 +68,15 @@ def run_pipeline(
     generate_top_n: int = 5,
     output_dir: Path = OUTPUT_DIR,
     verbose: bool = True,
+    persist: bool = True,
 ) -> list[ScoredJob]:
     profile: Profile = load_profile()
     if verbose:
         print(f"Loaded profile for {profile.full_name}")
         print(f"Searching Gmail: {query}")
+
+    if persist:
+        init_db()
 
     pairs = harvest_jobs(query=query, max_emails=max_emails)
     if verbose:
@@ -114,8 +119,23 @@ def run_pipeline(
             f"\nTotal scored: {len(deduped)}  |  >= {score_threshold}: {len(qualifying)}"
         )
 
+    # Persist all scored jobs (even below threshold) so the UI can show full picture.
+    db_ids: dict[int, int] = {}  # index in deduped -> job_id
+    if persist:
+        with connect() as conn:
+            for i, sj in enumerate(deduped):
+                db_ids[i] = upsert_scored_job(
+                    conn,
+                    job=sj.job.model_dump(),
+                    score=sj.score.model_dump(),
+                    source_email_id=sj.source_email_id,
+                    source_email_subject=sj.source_email_subject,
+                )
+
     # Generate materials for the top N
-    for sj in qualifying[:generate_top_n]:
+    for i, sj in enumerate(deduped):
+        if sj not in qualifying[:generate_top_n]:
+            continue
         if verbose:
             print(
                 f"  Drafting [{sj.score.score}] {sj.job.role} @ {sj.job.company}..."
@@ -124,6 +144,19 @@ def run_pipeline(
         sj.materials = materials
         pdf_paths = build_application_pdfs(profile, sj.job, materials, output_dir=output_dir)
         sj.pdfs = {k: str(v) for k, v in pdf_paths.items()}
+
+        if persist and i in db_ids:
+            with connect() as conn:
+                attach_materials(
+                    conn,
+                    db_ids[i],
+                    resume_summary=materials.resume_summary,
+                    cover_letter=materials.cover_letter,
+                    email_subject=materials.email_subject,
+                    email_body=materials.email_body,
+                    resume_pdf=str(pdf_paths["resume"]),
+                    cover_letter_pdf=str(pdf_paths["cover_letter"]),
+                )
 
     return deduped
 

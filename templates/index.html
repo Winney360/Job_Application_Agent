@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Jobs — Job Application Agent{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-head">
+    <h2>Fetch new job alerts</h2>
+  </div>
+  <form method="post" action="{{ url_for('fetch') }}" class="fetch-form"
+        data-overlay="Fetching from Gmail"
+        data-overlay-steps="Reading inbox…|Extracting jobs from each email…|Scoring matches against your profile…|Drafting cover letters and PDFs…|Wrapping up — almost there…">
+    <label>Gmail query
+      <input type="text" name="query" placeholder="from:jobalerts-noreply@linkedin.com newer_than:30d" />
+    </label>
+    <label>Max emails
+      <input type="number" name="max_emails" value="5" min="1" max="50" />
+    </label>
+    <label>Score threshold
+      <input type="number" name="threshold" value="50" min="0" max="100" />
+    </label>
+    <label>Draft top N
+      <input type="number" name="top_n" value="3" min="0" max="20" />
+    </label>
+    <button type="submit" class="btn btn-primary"
+            data-loading-text="Fetching… (30–90s)">Fetch &amp; score</button>
+  </form>
+  <p class="muted small">Drafts cover letters + PDFs only for the top N qualifying jobs. Nothing is emailed.</p>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>All scored jobs</h2>
+    <div class="status-counts">
+      {% for status in ['pending', 'drafted', 'approved', 'sent', 'rejected'] %}
+        {% set n = counts.get(status, 0) %}
+        <a href="{{ url_for('index', status=status, min_score=active_min_score) }}"
+           class="pill {% if active_status == status %}pill-active{% endif %}">
+          {{ status }} <span class="pill-count">{{ n }}</span>
+        </a>
+      {% endfor %}
+      <a href="{{ url_for('index', min_score=active_min_score) }}"
+         class="pill {% if not active_status %}pill-active{% endif %}">all</a>
+    </div>
+  </div>
+
+  {% if jobs %}
+  <table class="jobs">
+    <thead>
+      <tr>
+        <th class="col-score">Score</th>
+        <th>Role</th>
+        <th>Company</th>
+        <th>Location</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for j in jobs %}
+      <tr>
+        <td><span class="score-pill {{ j.score | score_color }}">{{ j.score }}</span></td>
+        <td><a href="{{ url_for('job_detail', job_id=j.id) }}">{{ j.role }}</a></td>
+        <td>{{ j.company }}</td>
+        <td class="muted">{{ j.location or '—' }}</td>
+        <td><span class="status-tag status-{{ j.status }}">{{ j.status }}</span></td>
+        <td>
+          <a href="{{ url_for('job_detail', job_id=j.id) }}" class="btn btn-sm">Review</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No jobs yet. Click <strong>Fetch &amp; score</strong> above to pull from Gmail.</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Job Application Agent{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <a href="{{ url_for('index') }}">Job Application Agent</a>
+    </div>
+    <div class="user">
+      {% if USER_FULL_NAME %}<span>{{ USER_FULL_NAME }}</span>{% endif %}
+      {% if USER_EMAIL %}<span class="muted">{{ USER_EMAIL }}</span>{% endif %}
+    </div>
+  </header>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-stack">
+        {% for category, msg in messages %}
+          <div class="flash flash-{{ category }}">{{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="muted">
+    <small>Drafts are AI-generated. Review every application before sending. Nothing is sent automatically.</small>
+  </footer>
+
+  <div id="overlay" class="overlay" hidden>
+    <div class="overlay-card">
+      <div class="spinner"></div>
+      <div id="overlay-title" class="overlay-title">Working…</div>
+      <div id="overlay-step" class="overlay-step muted small"></div>
+    </div>
+  </div>
+
+  <script>
+    // Lock POST forms on submit: disable buttons, swap label, show overlay if requested.
+    (function () {
+      const overlay = document.getElementById('overlay');
+      const overlayTitle = document.getElementById('overlay-title');
+      const overlayStep = document.getElementById('overlay-step');
+      let stepTimer = null;
+
+      function showOverlay(title, steps) {
+        overlay.hidden = false;
+        overlayTitle.textContent = title;
+        if (!steps || !steps.length) {
+          overlayStep.textContent = '';
+          return;
+        }
+        let i = 0;
+        overlayStep.textContent = steps[i];
+        stepTimer = setInterval(() => {
+          i = Math.min(i + 1, steps.length - 1);
+          overlayStep.textContent = steps[i];
+        }, 8000);
+      }
+
+      document.addEventListener('submit', function (e) {
+        const form = e.target;
+        if (form.method.toLowerCase() !== 'post') return;
+        if (form.dataset.submitting === '1') {
+          e.preventDefault();
+          return;
+        }
+        form.dataset.submitting = '1';
+
+        form.querySelectorAll('button[type=submit], button:not([type])').forEach(btn => {
+          btn.disabled = true;
+          if (btn.dataset.loadingText) {
+            btn.dataset.originalText = btn.textContent;
+            btn.textContent = btn.dataset.loadingText;
+          }
+          btn.classList.add('btn-loading');
+        });
+
+        if (form.dataset.overlay) {
+          const steps = (form.dataset.overlaySteps || '').split('|').filter(Boolean);
+          showOverlay(form.dataset.overlay, steps);
+        }
+      }, true);
+    })();
+  </script>
+</body>
+</html>

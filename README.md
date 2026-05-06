@@ -63,8 +63,30 @@ output/                 generated cover letters / resume PDFs (gitignored)
 ## Phase status
 
 - [x] Phase 1: Gmail OAuth + resume profile parser
-- [ ] Phase 2: email classifier, job extractor, remote filter, scorer, content + PDF generators
-- [ ] Phase 3: Flask review UI, SQLite logging, send-on-approval
+- [x] Phase 2: email classifier, job extractor, remote filter, scorer, content + PDF generators
+- [x] Phase 3: Flask review UI, SQLite logging, send-on-approval
+
+## Running the app
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python app.py
+```
+
+Open http://127.0.0.1:5000.
+
+Workflow:
+1. Click **Fetch & score** to pull LinkedIn job alerts and let Claude rank them
+2. Click any row to review one job — match analysis, draft email, draft cover letter, PDFs
+3. **Approve** to whitelist for sending; **Reject** to dismiss
+4. Enter a recipient address and click **Send application** to email the drafts + PDFs via your Gmail account
+5. Sent jobs are logged with the Gmail message id
+
+The CLI pipeline still works for headless batch runs:
+```powershell
+python -m agent.pipeline --max-emails 5 --threshold 50 --top-n 3
+```
+Either entry point writes into the same `jobs.db`.
 
 ## Strict rules (from the spec)
 

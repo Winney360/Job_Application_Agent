@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}{{ job.role }} @ {{ job.company }} — Review{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('index') }}" class="back-link">&larr; All jobs</a>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>{{ job.role }}</h2>
+      <p class="muted">{{ job.company }} &middot; {{ job.location or '—' }}
+        {% if job.remote %} &middot; <span class="tag-remote">Remote</span>{% endif %}
+      </p>
+    </div>
+    <div class="head-actions">
+      <span class="score-pill big {{ job.score | score_color }}">{{ job.score }}</span>
+      <span class="status-tag status-{{ job.status }}">{{ job.status }}</span>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <h3>Match analysis</h3>
+      <p>{{ job.score_reason }}</p>
+      {% if job.matched_skills %}
+        <p><strong>Matched:</strong>
+          {% for s in job.matched_skills %}<span class="chip chip-good">{{ s }}</span>{% endfor %}
+        </p>
+      {% endif %}
+      {% if job.missing_skills %}
+        <p><strong>Missing:</strong>
+          {% for s in job.missing_skills %}<span class="chip chip-warn">{{ s }}</span>{% endfor %}
+        </p>
+      {% endif %}
+    </div>
+    <div>
+      <h3>Posting</h3>
+      <dl>
+        <dt>Experience</dt><dd>{{ job.experience or '—' }}</dd>
+        <dt>Required skills</dt>
+        <dd>
+          {% for s in job.skills %}<span class="chip">{{ s }}</span>{% else %}<span class="muted">—</span>{% endfor %}
+        </dd>
+        <dt>Source email</dt><dd class="muted">{{ job.source_email_subject }}</dd>
+        {% if job.job_url %}<dt>Listing URL</dt><dd><a href="{{ job.job_url }}" target="_blank">Open posting &rarr;</a></dd>{% endif %}
+      </dl>
+    </div>
+  </div>
+</section>
+
+{% if job.cover_letter %}
+<section class="panel">
+  <div class="panel-head"><h2>Application drafts</h2></div>
+
+  <div class="grid-2">
+    <div>
+      <h3>Email subject</h3>
+      <pre class="readonly small">{{ job.email_subject }}</pre>
+      <h3>Email body</h3>
+      <pre class="readonly">{{ job.email_body }}</pre>
+    </div>
+    <div>
+      <h3>Tailored resume summary</h3>
+      <pre class="readonly">{{ job.resume_summary }}</pre>
+      <h3>Cover letter</h3>
+      <pre class="readonly tall">{{ job.cover_letter }}</pre>
+    </div>
+  </div>
+
+  <div class="pdf-row">
+    {% if job.resume_pdf %}<a href="{{ url_for('download_pdf', job_id=job.id, kind='resume') }}" target="_blank" class="btn">View resume PDF</a>{% endif %}
+    {% if job.cover_letter_pdf %}<a href="{{ url_for('download_pdf', job_id=job.id, kind='cover_letter') }}" target="_blank" class="btn">View cover letter PDF</a>{% endif %}
+    <form method="post" action="{{ url_for('refresh_drafts', job_id=job.id) }}" class="inline">
+      <button type="submit" class="btn">Regenerate drafts</button>
+    </form>
+  </div>
+</section>
+{% else %}
+<section class="panel">
+  <p class="empty">No drafts yet for this job.
+    <form method="post" action="{{ url_for('refresh_drafts', job_id=job.id) }}" class="inline">
+      <button type="submit" class="btn btn-primary">Generate drafts</button>
+    </form>
+  </p>
+</section>
+{% endif %}
+
+<section class="panel actions">
+  <h2>Actions</h2>
+  {% if job.status == 'sent' %}
+    <p class="ok">Sent on {{ job.sent_at }} to <strong>{{ job.sent_to }}</strong>.<br>
+       Gmail message id: <code>{{ job.sent_message_id }}</code></p>
+  {% else %}
+    <div class="action-row">
+      {% if job.status != 'approved' %}
+      <form method="post" action="{{ url_for('approve', job_id=job.id) }}" class="inline">
+        <button type="submit" class="btn btn-good">Approve for sending</button>
+      </form>
+      {% endif %}
+      <form method="post" action="{{ url_for('reject', job_id=job.id) }}" class="inline"
+            onsubmit="return confirm('Reject this job? You can refilter later.');">
+        <button type="submit" class="btn btn-danger">Reject</button>
+      </form>
+    </div>
+
+    {% if job.cover_letter %}
+    <hr />
+    <h3>Send application</h3>
+    <p class="muted small">Will send the email above with the resume + cover letter PDFs attached, via your authorized Gmail account. Double-check the recipient.</p>
+    <form method="post" action="{{ url_for('send', job_id=job.id) }}" class="send-form"
+          onsubmit="return confirm('Send the application now?');">
+      <label>Recipient email
+        <input type="email" name="to" required placeholder="careers@company.com" />
+      </label>
+      <button type="submit" class="btn btn-primary"
+              {% if job.status not in ['approved', 'drafted'] %}disabled{% endif %}>
+        Send application
+      </button>
+    </form>
+    {% endif %}
+  {% endif %}
+</section>
+{% endblock %}
